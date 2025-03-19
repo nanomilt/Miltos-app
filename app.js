@@ -29,7 +29,7 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
   console.log(`Received push event from ${payload.repository.full_name}`);
 
   // Get repository details
-  const { owner, name:repo } = payload.repository;
+  const { owner:repoOwner, name:repoName } = payload.repository;
   const branch = payload.ref.replace('refs/heads/', '');
 
   // Check if the push contains any changes to the README.md
@@ -47,7 +47,6 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
     const existingPRs = await octokit.rest.pulls.list({
       owner:repoOwner,
       repo:repoName,
-      state: 'open', // Get only open pull requests
       head: `${owner}:${process.env.SOURCE_BRANCH}`, // The source branch (e.g., 'otherbranch')
       base: process.env.BASE_BRANCH, // The target branch (e.g., 'main')
     });
