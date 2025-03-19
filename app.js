@@ -29,7 +29,7 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
   console.log(`Received push event from ${payload.repository.full_name}`);
 
   // Get repository details
-  const { repoOwner, repoName } = payload.repository;
+  const { owner:repoOwner, name:repoName } = payload.repository;
   const branch = payload.ref.replace('refs/heads/', '');
 
   // Check if the push contains any changes to the README.md
