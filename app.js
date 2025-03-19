@@ -29,7 +29,7 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
   console.log(`Received push event from ${payload.repository.full_name}`)
 
   // Get repository details
-  const { owner: repoOwner } = payload.repository
+  const { owner:repoOwner } = payload.repository
   const branch = payload.ref.replace('refs/heads/', '')
 
   // Only process events from the source branch
