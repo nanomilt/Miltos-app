@@ -45,8 +45,9 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
     
     // Get existing pull requests between the source and base branches
     const existingPRs = await octokit.rest.pulls.list({
-      owner,
-      repo,
+      owner:repoOwner,
+      repo:repoName,
+      state: 'open', // Get only open pull requests
       head: `${owner}:${process.env.SOURCE_BRANCH}`, // The source branch (e.g., 'otherbranch')
       base: process.env.BASE_BRANCH, // The target branch (e.g., 'main')
     });
