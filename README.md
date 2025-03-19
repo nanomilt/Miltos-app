@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Sample GitHub App
 
 This sample app showcases how webhooks can be used with a GitHub App's installation token to create a bot that responds to issues. Code uses [octokit.js](https://github.com/octokit/octokit.js).
@@ -42,3 +43,6 @@ by major cloud providers:
 [Google Secret Manager](https://cloud.google.com/nodejs/docs/reference/secret-manager/latest),
 etc.
   
+=======
+This repository has been updated after a push event!
+>>>>>>> e0d9d0039925277189597fb919f170196b255557
