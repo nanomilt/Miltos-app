@@ -29,7 +29,7 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
   console.log(`Received push event from ${payload.repository.full_name}`);
 
   // Get repository details
-  const { owner, name: repo } = payload.repository;
+  const { repoOwner, repoName } = payload.repository;
   const branch = payload.ref.replace('refs/heads/', '');
 
   // Check if the push contains any changes to the README.md
@@ -42,7 +42,22 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
 
     // Modify README.md (you can add any content here)
     const newContent = 'This repository has been updated after a push event!';
+    
+    // Get existing pull requests between the source and base branches
+    const existingPRs = await octokit.rest.pulls.list({
+      owner,
+      repo,
+      head: `${owner}:${process.env.SOURCE_BRANCH}`, // The source branch (e.g., 'otherbranch')
+      base: process.env.BASE_BRANCH, // The target branch (e.g., 'main')
+    });
 
+    if (existingPRs.data.length > 0) {
+      console.log('A pull request already exists. Skipping PR creation.');
+      return; // Skip the creation of a new PR if one already exists
+    }
+
+    // Update README.md directly on the same branch (no new branch needed)
+    console.log('Updating README.md directly on the same branch...');
     // Get the current README.md file
     const { data: readme } = await octokit.rest.repos.getContent({
       owner: repoOwner,  // Using the repo owner from .env
