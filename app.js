@@ -4,8 +4,10 @@ import { App } from 'octokit'
 import { createNodeMiddleware } from '@octokit/webhooks'
 import http from 'http'
 
+// Load environment variables from .env file
 dotenv.config()
 
+// Validate environment variables
 const appId = process.env.APP_ID
 const privateKeyPath = process.env.PRIVATE_KEY_PATH
 const secret = process.env.WEBHOOK_SECRET
@@ -16,100 +18,112 @@ const sourceBranch = process.env.SOURCE_BRANCH
 const port = process.env.PORT || 3000
 const privateKey = fs.readFileSync(privateKeyPath, 'utf8')
 
+// Create the GitHub App instance
 const app = new App({
   appId,
   privateKey,
-  webhooks: {
-    secret
-  }
+  webhooks: { secret }
 })
+
+// Generic function to handle rate limiting
+async function withRateLimitHandling(apiCall, maxRetries = 3) {
+  let attempt = 0
+  while (attempt < maxRetries) {
+    try {
+      return await apiCall()
+    } catch (error) {
+      if (error.status === 403 && error.response?.headers['x-ratelimit-remaining'] === '0') {
+        const resetTime = error.response.headers['x-ratelimit-reset']
+        const waitTime = resetTime - Math.floor(Date.now() / 1000) + 1
+        console.warn(`Rate limit exceeded. Retrying in ${waitTime} seconds...`)
+        await new Promise(resolve => setTimeout(resolve, waitTime * 1000))
+      } else {
+        throw error
+      }
+    }
+    attempt++
+  }
+  throw new Error('Exceeded max retries due to rate limits')
+}
 
 app.webhooks.on('push', async ({ octokit, payload }) => {
   console.log(`Received push event from ${payload.repository.full_name}`)
 
+  // Extract branch name
   const branch = payload.ref.replace('refs/heads/', '')
-
   if (branch !== sourceBranch) {
     console.log(`Push was to ${branch}, not ${sourceBranch}. Skipping.`)
     return
   }
 
+  // Check if README.md was modified
+  const readmeModified = payload.commits.some(commit => (commit.modified || []).includes('README.md'))
+  if (!readmeModified) {
+    console.log('README.md was not modified in this push. No action needed.')
+    return
+  }
+  console.log('README.md modified. Processing...')
+
   try {
-    // Use the Compare API to fetch modified files
-    const commits = payload.commits.map(commit => commit.id)
-    if (commits.length === 0) {
-      console.log('No commits found in push event. Skipping.')
-      return
-    }
-
-    const compareResponse = await octokit.rest.repos.compareCommits({
-      owner: repoOwner,
-      repo: repoName,
-      base: payload.before,
-      head: payload.after
-    })
-
-    const changedFiles = compareResponse.data.files.map(file => file.filename)
-
-    if (!changedFiles.includes('README.md')) {
-      console.log('README.md was NOT modified in this push. No action needed.')
-      return
-    }
-
-    console.log('README.md modified. Processing...')
-
     // Check for existing PRs
-    const existingPRs = await octokit.rest.pulls.list({
-      owner: repoOwner,
-      repo: repoName,
-      head: `${repoOwner}:${sourceBranch}`,
-      base: baseBranch,
-      state: 'open'
-    })
+    const existingPRs = await withRateLimitHandling(() =>
+      octokit.rest.pulls.list({
+        owner: repoOwner,
+        repo: repoName,
+        head: `${repoOwner}:${sourceBranch}`,
+        base: baseBranch,
+        state: 'open'
+      })
+    )
 
     if (existingPRs.data.length > 0) {
       console.log('A pull request already exists. Skipping PR creation.')
       return
     }
 
-    // Fetch latest README.md content
-    const { data: readme } = await octokit.rest.repos.getContent({
-      owner: repoOwner,
-      repo: repoName,
-      path: 'README.md',
-      ref: sourceBranch
-    })
+    // Get the latest commit SHA for README.md
+    const readme = await withRateLimitHandling(() =>
+      octokit.rest.repos.getContent({
+        owner: repoOwner,
+        repo: repoName,
+        path: 'README.md',
+        ref: sourceBranch
+      })
+    )
 
-    const existingContent = Buffer.from(readme.content, 'base64').toString('utf8')
-    const newContent = `${existingContent}\n\nThis file has been updated after a push event!`
+    const existingContent = Buffer.from(readme.data.content, 'base64').toString('utf8')
+    const newContent = `${existingContent}\n\nThis repository has been updated after a push event on ${new Date().toISOString()}!`
 
-    // Retry logic for updating the file
+    // Attempt to update README.md with retry logic for conflicts
     const maxRetries = 2
     let attempt = 0
-
     while (attempt < maxRetries) {
       try {
-        await octokit.rest.repos.createOrUpdateFileContents({
-          owner: repoOwner,
-          repo: repoName,
-          path: 'README.md',
-          message: 'Update README.md after push event [automated]',
-          content: Buffer.from(newContent).toString('base64'),
-          sha: readme.sha,
-          branch: sourceBranch
-        })
-        console.log('README.md updated successfully.')
-        break
-      } catch (error) {
-        if (error.status === 409) {
-          console.warn(`Conflict detected, retrying... (Attempt ${attempt + 1})`)
-          const { data: updatedReadme } = await octokit.rest.repos.getContent({
+        await withRateLimitHandling(() =>
+          octokit.rest.repos.createOrUpdateFileContents({
             owner: repoOwner,
             repo: repoName,
             path: 'README.md',
-            ref: sourceBranch
+            message: `Automated Update: README.md modified on ${new Date().toISOString()}`,
+            content: Buffer.from(newContent).toString('base64'),
+            sha: readme.data.sha,
+            branch: sourceBranch
           })
-          readme.sha = updatedReadme.sha
+        )
+        console.log('README.md updated successfully.')
+        break
+      } catch (error) {
+        if (error.status === 409) { // Conflict error due to outdated SHA
+          console.warn(`Conflict detected, retrying... (Attempt ${attempt + 1})`)
+          const updatedReadme = await withRateLimitHandling(() =>
+            octokit.rest.repos.getContent({
+              owner: repoOwner,
+              repo: repoName,
+              path: 'README.md',
+              ref: sourceBranch
+            })
+          )
+          readme.data.sha = updatedReadme.data.sha
         } else {
           console.error('Error updating README.md:', error)
           throw error
@@ -118,16 +132,18 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
       attempt++
     }
 
-    // Create PR if necessary
+    // Create a pull request
     if (sourceBranch !== baseBranch) {
-      const pr = await octokit.rest.pulls.create({
-        owner: repoOwner,
-        repo: repoName,
-        title: 'Update README.md [Automated]',
-        head: sourceBranch,
-        base: baseBranch,
-        body: 'This is an automated PR to update the README.md after a push event.'
-      })
+      const pr = await withRateLimitHandling(() =>
+        octokit.rest.pulls.create({
+          owner: repoOwner,
+          repo: repoName,
+          title: `Update README.md [Automated] - ${new Date().toISOString()}`,
+          head: sourceBranch,
+          base: baseBranch,
+          body: 'This is an automated PR to update the README.md after a push event.'
+        })
+      )
       console.log(`Pull request created successfully! PR #${pr.data.number}`)
     } else {
       console.log('Source and base branches are the same. Skipping PR creation.')
@@ -137,7 +153,7 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
   }
 })
 
-// Set up webhook server
+// Set up the webhook server
 const middleware = createNodeMiddleware(app.webhooks, { path: '/api/webhook' })
 const server = http.createServer(middleware)
 
