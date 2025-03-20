@@ -26,7 +26,7 @@ const app = new App({
 })
 
 // Generic function to handle rate limiting
-async function withRateLimitHandling(apiCall, maxRetries = 3) {
+async function withRateLimitHandling (apiCall, maxRetries = 3) {
   let attempt = 0
   while (attempt < maxRetries) {
     try {
@@ -50,16 +50,16 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
   console.log('Received push event')
 
   const commitInfo = payload.commits.map(commit => {
-    console.log(`Processing commit: ${commit.id}`);  // Log each commit's ID while processing
-    return `Commit: ${commit.id}\nMessage: ${commit.message}\nAuthor: ${commit.author.name}`;
-  }).join('\n\n');
-  
+    console.log(`Processing commit: ${commit.id}`) // Log each commit's ID while processing
+    return `Commit: ${commit.id}\nMessage: ${commit.message}\nAuthor: ${commit.author.name}`
+  }).join('\n\n')
+
   // Extract branch name
   const branch = payload.ref.replace('refs/heads/', '')
-  console.log(`Push event to branch: ${branch}`);
-  
+  console.log(`Push event to branch: ${branch}`)
+
   if (branch !== sourceBranch) {
-    console.log(`Push was to ${branch}, not ${sourceBranch}. Skipping.`);
+    console.log(`Push was to ${branch}, not ${sourceBranch}. Skipping.`)
     return
   }
 
@@ -84,7 +84,7 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
     )
 
     if (existingPRs.data.length > 0) {
-      console.log('A pull request already exists. Skipping PR creation.');
+      console.log('A pull request already exists. Skipping PR creation.')
       return
     }
 
@@ -117,7 +117,7 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
             branch: sourceBranch
           })
         )
-        console.log('README.md updated successfully.');
+        console.log('README.md updated successfully.')
         break
       } catch (error) {
         if (error.status === 409) { // Conflict error due to outdated SHA
@@ -145,7 +145,7 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
         octokit.rest.pulls.create({
           owner: repoOwner,
           repo: repoName,
-          title: `Update README.md [Automated] - ${new Date().toISOString()}`,
+          title: `Update README.md [Automated] - ${new Date()}`,
           head: sourceBranch,
           base: baseBranch,
           body: `This is an automated PR to update the README.md after a push event.\n\n### Commit Details:\n${commitInfo}`
