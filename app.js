@@ -84,7 +84,7 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
     const newContent = `${existingContent}\n\nThis file has been updated after a push event!`
 
     // Retry logic for updating the file
-    const maxRetries = 1
+    const maxRetries = 2
     let attempt = 0
 
     while (attempt < maxRetries) {
