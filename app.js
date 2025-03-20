@@ -47,8 +47,8 @@ async function withRateLimitHandling(apiCall, maxRetries = 3) {
 }
 
 app.webhooks.on('push', async ({ octokit, payload }) => {
-  // Log the entire payload to inspect the structure
-  console.log('Received push event payload:', JSON.stringify(payload, null, 2)) 
+  // Only log relevant info
+  console.log('Received push event')
 
   if (!payload.commits || payload.commits.length === 0) {
     console.log('No commits found in the push event payload');
@@ -108,7 +108,7 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
     )
 
     const existingContent = Buffer.from(readme.data.content, 'base64').toString('utf8')
-    const newContent = `${existingContent}\n\n### Update Info:\n${commitInfo}\n\nThis repository has been updated after a push event on ${new Date().toISOString()}!`
+    const newContent = `${existingContent}\n\n### Update Info:\n${commitInfo}\n\nThis repository has been updated after a push event on ${new Date().toISOString()}`
 
     // Attempt to update README.md with retry logic for conflicts
     const maxRetries = 2
