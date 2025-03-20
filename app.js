@@ -51,15 +51,6 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
   const branch = payload.ref.replace('refs/heads/', '')
   const commitMessage = payload.commits[0]?.message
   console.log(`Push event received for branch: ${branch} with commit: ${commitMessage}`)
-
-  if (!payload.commits || payload.commits.length === 0) {
-    console.log('No commits found in the push event payload.');
-    return;
-  }
-
-  const commitInfo = payload.commits.map(commit => {
-    return `Commit: ${commit.id}\nMessage: ${commit.message}\nAuthor: ${commit.author.name}`;
-  }).join('\n\n');
   
   // Check if the branch matches the source branch
   if (branch !== sourceBranch) {
