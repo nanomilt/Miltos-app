@@ -26,7 +26,7 @@ const app = new App({
   }
 })
 
-app.webhooks.on('push', async ({ octokit, payload }) => {
+ app.webhooks.on('push', async ({ octokit, payload }) => {
   console.log(`Received push event from ${payload.repository.full_name}`)
 
   const branch = payload.ref.replace('refs/heads/', '')
