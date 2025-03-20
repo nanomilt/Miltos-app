@@ -57,7 +57,13 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
   }
 
   // Extract commit info
-  const commitInfo = payload.commits.map(commit => `Commit: ${commit.id}\nMessage: ${commit.message}\nAuthor: ${commit.author.name}`).join('\n\n')
+  const commitInfo = payload.commits.map(commit => {
+    console.log(`Processing commit: ${commit.id}`);  // Log each commit's id while processing
+    return `Commit: ${commit.id}\nMessage: ${commit.message}\nAuthor: ${commit.author.name}`;
+  }).join('\n\n');
+  
+  console.log('Formatted Commit Info:\n', commitInfo);  // Log the final formatted commit info
+  
 
   // Check if README.md was modified
   const readmeModified = payload.commits.some(commit => (commit.modified || []).includes('README.md'))
