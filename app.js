@@ -103,10 +103,10 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
     )
 
     const existingContent = Buffer.from(readme.data.content, 'base64').toString('utf8')
-    const newContent = `${existingContent}\n\n### Update Info:\n${commitInfo}\n\nThis repository has been updated after a push event!`
+    const newContent = `${existingContent}\n\n### Update Info:\n\nThis repository has been updated after a push event!`
 
     // Attempt to update README.md with retry logic for conflicts
-    const maxRetries = 1
+    const maxRetries = 2
     let attempt = 0
     while (attempt < maxRetries) {
       try {
