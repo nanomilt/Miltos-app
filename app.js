@@ -4,7 +4,6 @@ import { App } from 'octokit'
 import { createNodeMiddleware } from '@octokit/webhooks'
 import http from 'http'
 
-// Load environment variables from .env file
 dotenv.config()
 
 const appId = process.env.APP_ID
@@ -17,7 +16,6 @@ const sourceBranch = process.env.SOURCE_BRANCH
 const port = process.env.PORT || 3000
 const privateKey = fs.readFileSync(privateKeyPath, 'utf8')
 
-// Create GitHub App instance
 const app = new App({
   appId,
   privateKey,
@@ -26,7 +24,7 @@ const app = new App({
   }
 })
 
- app.webhooks.on('push', async ({ octokit, payload }) => {
+app.webhooks.on('push', async ({ octokit, payload }) => {
   console.log(`Received push event from ${payload.repository.full_name}`)
 
   const branch = payload.ref.replace('refs/heads/', '')
@@ -36,21 +34,31 @@ const app = new App({
     return
   }
 
-  // Check if README.md was modified, added, or removed
-  const readmeModified = payload.commits.some(commit => {
-    const changedFiles = [...(commit.modified || []), ...(commit.added || []), ...(commit.removed || [])]
-    return changedFiles.includes('README.md')
-  })
-
-  if (!readmeModified) {
-    console.log('README.md was not modified in this push. No action needed.')
-    return
-  }
-
-  console.log('README.md modified. Processing...')
-
   try {
-    // Check for existing PRs to avoid duplicates
+    // Use the Compare API to fetch modified files
+    const commits = payload.commits.map(commit => commit.id)
+    if (commits.length === 0) {
+      console.log('No commits found in push event. Skipping.')
+      return
+    }
+
+    const compareResponse = await octokit.rest.repos.compareCommits({
+      owner: repoOwner,
+      repo: repoName,
+      base: payload.before,
+      head: payload.after
+    })
+
+    const changedFiles = compareResponse.data.files.map(file => file.filename)
+
+    if (!changedFiles.includes('README.md')) {
+      console.log('README.md was NOT modified in this push. No action needed.')
+      return
+    }
+
+    console.log('README.md modified. Processing...')
+
+    // Check for existing PRs
     const existingPRs = await octokit.rest.pulls.list({
       owner: repoOwner,
       repo: repoName,
@@ -64,7 +72,7 @@ const app = new App({
       return
     }
 
-    // Get the latest README.md content
+    // Fetch latest README.md content
     const { data: readme } = await octokit.rest.repos.getContent({
       owner: repoOwner,
       repo: repoName,
@@ -73,10 +81,10 @@ const app = new App({
     })
 
     const existingContent = Buffer.from(readme.content, 'base64').toString('utf8')
-    const newContent = `${existingContent}\n\nThis repository has been updated after a push event on ${new Date().toISOString()}!`
+    const newContent = `${existingContent}\n\nThis file has been updated after a push event!`
 
-    // Update README.md with retry logic
-    const maxRetries = 2
+    // Retry logic for updating the file
+    const maxRetries = 1
     let attempt = 0
 
     while (attempt < maxRetries) {
