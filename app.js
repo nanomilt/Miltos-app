@@ -56,6 +56,9 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
     return
   }
 
+  // Extract commit info
+  const commitInfo = payload.commits.map(commit => `Commit: ${commit.id}\nMessage: ${commit.message}\nAuthor: ${commit.author.name}`).join('\n\n')
+
   // Check if README.md was modified
   const readmeModified = payload.commits.some(commit => (commit.modified || []).includes('README.md'))
   if (!readmeModified) {
@@ -92,7 +95,7 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
     )
 
     const existingContent = Buffer.from(readme.data.content, 'base64').toString('utf8')
-    const newContent = `${existingContent}\n\nThis repository has been updated after a push event on ${new Date().toISOString()}!`
+    const newContent = `${existingContent}\n\n### Update Info:\n${commitInfo}\n\nThis repository has been updated after a push event on ${new Date().toISOString()}!`
 
     // Attempt to update README.md with retry logic for conflicts
     const maxRetries = 2
@@ -141,7 +144,7 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
           title: `Update README.md [Automated] - ${new Date().toISOString()}`,
           head: sourceBranch,
           base: baseBranch,
-          body: 'This is an automated PR to update the README.md after a push event.'
+          body: `This is an automated PR to update the README.md after a push event.\n\n### Commit Details:\n${commitInfo}`
         })
       )
       console.log(`Pull request created successfully! PR #${pr.data.number}`)
