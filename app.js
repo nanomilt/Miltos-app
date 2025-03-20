@@ -47,25 +47,38 @@ async function withRateLimitHandling(apiCall, maxRetries = 3) {
 }
 
 app.webhooks.on('push', async ({ octokit, payload }) => {
-  // Only log key details to avoid clutter
-  const branch = payload.ref.replace('refs/heads/', '')
-  const commitMessage = payload.commits[0]?.message
-  console.log(`Push event received for branch: ${branch} with commit: ${commitMessage}`)
+  // Log the entire payload to inspect the structure
+  console.log('Received push event payload:', JSON.stringify(payload, null, 2)) 
+
+  if (!payload.commits || payload.commits.length === 0) {
+    console.log('No commits found in the push event payload');
+    return;
+  }
+
+  const commitInfo = payload.commits.map(commit => {
+    console.log(`Processing commit: ${commit.id}`);  // Log each commit's ID while processing
+    return `Commit: ${commit.id}\nMessage: ${commit.message}\nAuthor: ${commit.author.name}`;
+  }).join('\n\n');
   
-  // Check if the branch matches the source branch
+  console.log('Formatted Commit Info:\n', commitInfo);  // Log the final formatted commit info
+
+  // Extract branch name
+  const branch = payload.ref.replace('refs/heads/', '')
+  console.log(`Push event to branch: ${branch}`);
+  
   if (branch !== sourceBranch) {
-    console.log(`Skipping: Push event is on ${branch}, not on ${sourceBranch}`);
+    console.log(`Push was to ${branch}, not ${sourceBranch}. Skipping.`);
     return
   }
 
   // Check if README.md was modified
   const readmeModified = payload.commits.some(commit => (commit.modified || []).includes('README.md'))
   if (!readmeModified) {
-    console.log('Skipping: README.md was not modified in this push.');
+    console.log('README.md was not modified in this push. No action needed.');
     return
   }
 
-  console.log('README.md modified. Processing PR creation...')
+  console.log('README.md modified. Processing...')
 
   try {
     // Check for existing PRs
@@ -80,7 +93,7 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
     )
 
     if (existingPRs.data.length > 0) {
-      console.log('Skipping: A pull request already exists.');
+      console.log('A pull request already exists. Skipping PR creation.');
       return
     }
 
@@ -149,7 +162,7 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
       )
       console.log(`Pull request created successfully! PR #${pr.data.number}`)
     } else {
-      console.log('Skipping: Source and base branches are the same.');
+      console.log('Source and base branches are the same. Skipping PR creation.')
     }
   } catch (error) {
     console.error('Error handling push event:', error)
