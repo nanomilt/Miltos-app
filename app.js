@@ -47,11 +47,9 @@ async function withRateLimitHandling(apiCall, maxRetries = 3) {
 }
 
 app.webhooks.on('push', async ({ octokit, payload }) => {
-  // Only log relevant info
   console.log('Received push event')
 
   if (!payload.commits || payload.commits.length === 0) {
-    console.log('No commits found in the push event payload');
     return;
   }
 
@@ -74,7 +72,6 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
   // Check if README.md was modified
   const readmeModified = payload.commits.some(commit => (commit.modified || []).includes('README.md'))
   if (!readmeModified) {
-    console.log('README.md was not modified in this push. No action needed.');
     return
   }
 
