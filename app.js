@@ -49,10 +49,6 @@ async function withRateLimitHandling(apiCall, maxRetries = 3) {
 app.webhooks.on('push', async ({ octokit, payload }) => {
   console.log('Received push event')
 
-  if (!payload.commits || payload.commits.length === 0) {
-    return;
-  }
-
   const commitInfo = payload.commits.map(commit => {
     console.log(`Processing commit: ${commit.id}`);  // Log each commit's ID while processing
     return `Commit: ${commit.id}\nMessage: ${commit.message}\nAuthor: ${commit.author.name}`;
