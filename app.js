@@ -7,7 +7,6 @@ import http from 'http'
 // Load environment variables from .env file
 dotenv.config()
 
-// Validate environment variables
 const appId = process.env.APP_ID
 const privateKeyPath = process.env.PRIVATE_KEY_PATH
 const secret = process.env.WEBHOOK_SECRET
@@ -18,7 +17,7 @@ const sourceBranch = process.env.SOURCE_BRANCH
 const port = process.env.PORT || 3000
 const privateKey = fs.readFileSync(privateKeyPath, 'utf8')
 
-// Create the GitHub App instance
+// Create GitHub App instance
 const app = new App({
   appId,
   privateKey,
@@ -30,7 +29,6 @@ const app = new App({
 app.webhooks.on('push', async ({ octokit, payload }) => {
   console.log(`Received push event from ${payload.repository.full_name}`)
 
-  // Extract branch name from the push event
   const branch = payload.ref.replace('refs/heads/', '')
 
   if (branch !== sourceBranch) {
@@ -38,8 +36,11 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
     return
   }
 
-  // Check if README.md was modified in this push
-  const readmeModified = payload.commits.some(commit => (commit.modified || []).includes('README.md'))
+  // Check if README.md was modified, added, or removed
+  const readmeModified = payload.commits.some(commit => {
+    const changedFiles = [...(commit.modified || []), ...(commit.added || []), ...(commit.removed || [])]
+    return changedFiles.includes('README.md')
+  })
 
   if (!readmeModified) {
     console.log('README.md was not modified in this push. No action needed.')
@@ -63,7 +64,7 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
       return
     }
 
-    // Get the latest commit SHA for the README.md file
+    // Get the latest README.md content
     const { data: readme } = await octokit.rest.repos.getContent({
       owner: repoOwner,
       repo: repoName,
@@ -74,12 +75,12 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
     const existingContent = Buffer.from(readme.content, 'base64').toString('utf8')
     const newContent = `${existingContent}\n\nThis repository has been updated after a push event on ${new Date().toISOString()}!`
 
+    // Update README.md with retry logic
     const maxRetries = 2
     let attempt = 0
 
     while (attempt < maxRetries) {
       try {
-        // Update README.md with the latest commit SHA
         await octokit.rest.repos.createOrUpdateFileContents({
           owner: repoOwner,
           repo: repoName,
@@ -90,28 +91,26 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
           branch: sourceBranch
         })
         console.log('README.md updated successfully.')
-        break // Exit retry loop on success
+        break
       } catch (error) {
-        if (error.status === 409) { // Conflict error due to outdated SHA
+        if (error.status === 409) {
           console.warn(`Conflict detected, retrying... (Attempt ${attempt + 1})`)
-
-          // Fetch latest README.md again
           const { data: updatedReadme } = await octokit.rest.repos.getContent({
             owner: repoOwner,
             repo: repoName,
             path: 'README.md',
             ref: sourceBranch
           })
-          readme.sha = updatedReadme.sha // Update SHA
+          readme.sha = updatedReadme.sha
         } else {
           console.error('Error updating README.md:', error)
-          throw error // Abort on non-SHA conflict errors
+          throw error
         }
       }
       attempt++
     }
 
-    // Create a pull request for the changes if necessary
+    // Create PR if necessary
     if (sourceBranch !== baseBranch) {
       const pr = await octokit.rest.pulls.create({
         owner: repoOwner,
@@ -130,7 +129,7 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
   }
 })
 
-// Set up the webhook server
+// Set up webhook server
 const middleware = createNodeMiddleware(app.webhooks, { path: '/api/webhook' })
 const server = http.createServer(middleware)
 
