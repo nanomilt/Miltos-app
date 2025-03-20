@@ -48,23 +48,19 @@ async function withRateLimitHandling(apiCall, maxRetries = 3) {
 
 app.webhooks.on('push', async ({ octokit, payload }) => {
   console.log(`Received push event from ${payload.repository.full_name}`)
-
-  // Extract branch name
-  const branch = payload.ref.replace('refs/heads/', '')
-  if (branch !== sourceBranch) {
-    console.log(`Push was to ${branch}, not ${sourceBranch}. Skipping.`)
-    return
-  }
-
-  // Extract commit info
+  
   const commitInfo = payload.commits.map(commit => {
     console.log(`Processing commit: ${commit.id}`);  // Log each commit's id while processing
     return `Commit: ${commit.id}\nMessage: ${commit.message}\nAuthor: ${commit.author.name}`;
   }).join('\n\n');
   
   console.log('Formatted Commit Info:\n', commitInfo);  // Log the final formatted commit info
-  
-
+  // Extract branch name
+  const branch = payload.ref.replace('refs/heads/', '')
+  if (branch !== sourceBranch) {
+    console.log(`Push was to ${branch}, not ${sourceBranch}. Skipping.`)
+    return
+  }
   // Check if README.md was modified
   const readmeModified = payload.commits.some(commit => (commit.modified || []).includes('README.md'))
   if (!readmeModified) {
