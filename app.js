@@ -55,11 +55,10 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
 
   const commitInfo = payload.commits.map(commit => {
     console.log(`Processing commit: ${commit.id}`);  // Log each commit's ID while processing
-    return `Commit: ${commit.id}\nMessage: ${commit.message}\nAuthor: ${commit.author.name}`;
-  }).join('\n\n');
+    return `Commit: ${commit.id} Message: ${commit.message} Author: ${commit.author.name}`;
+  }).join(' ');
   
-  console.log('Formatted Commit Info:\n', commitInfo);  // Log the final formatted commit info
-
+  
   // Extract branch name
   const branch = payload.ref.replace('refs/heads/', '')
   console.log(`Push event to branch: ${branch}`);
