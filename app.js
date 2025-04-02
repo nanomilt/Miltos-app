@@ -1,11 +1,12 @@
 import dotenv from 'dotenv'
+// Load environment variables from .env file
+dotenv.config()
+
 import fs from 'fs'
 import { App } from 'octokit'
 import { createNodeMiddleware } from '@octokit/webhooks'
 import http from 'http'
 
-// Load environment variables from .env file
-dotenv.config()
 
 // Validate environment variables
 const appId = process.env.APP_ID
@@ -63,15 +64,13 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
     return
   }
 
-  // Collect all modified files
-  const modifiedFiles = payload.commits.flatMap(commit => commit.modified || [])
-
-  if (modifiedFiles.length === 0) {
-    console.log('No modified files detected. Skipping.')
+  // Check if README.md was modified
+  const readmeModified = payload.commits.some(commit => (commit.modified || []).includes('README.md'))
+  if (!readmeModified) {
     return
   }
 
-  console.log(`Modified files detected: ${modifiedFiles.join(', ')}`)
+  console.log('README.md modified. Processing...')
 
   try {
     // Check for existing PRs
@@ -90,16 +89,67 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
       return
     }
 
+    // Get the latest commit SHA for README.md
+    const readme = await withRateLimitHandling(() =>
+      octokit.rest.repos.getContent({
+        owner: repoOwner,
+        repo: repoName,
+        path: 'README.md',
+        ref: sourceBranch
+      })
+    )
+
+    const existingContent = Buffer.from(readme.data.content, 'base64').toString('utf8')
+    const newContent = `${existingContent}\n\n### Update Info:\n\nThis repository has been updated after a push event!`
+
+    // Attempt to update README.md with retry logic for conflicts
+    const maxRetries = 2
+    let attempt = 0
+    while (attempt < maxRetries) {
+      try {
+        await withRateLimitHandling(() =>
+          octokit.rest.repos.createOrUpdateFileContents({
+            owner: repoOwner,
+            repo: repoName,
+            path: 'README.md',
+            message: `Automated Update: README.md modified on ${new Date().toISOString()}`,
+            content: Buffer.from(newContent).toString('base64'),
+            sha: readme.data.sha,
+            branch: sourceBranch
+          })
+        )
+        console.log('README.md updated successfully.')
+        break
+      } catch (error) {
+        if (error.status === 409) { // Conflict error due to outdated SHA
+          console.warn(`Conflict detected, retrying... (Attempt ${attempt + 1})`)
+          const updatedReadme = await withRateLimitHandling(() =>
+            octokit.rest.repos.getContent({
+              owner: repoOwner,
+              repo: repoName,
+              path: 'README.md',
+              ref: sourceBranch
+            })
+          )
+          readme.data.sha = updatedReadme.data.sha
+        } else {
+          console.error('Error updating README.md:', error)
+          throw error
+        }
+      }
+      attempt++
+    }
+
     // Create a pull request
     if (sourceBranch !== baseBranch) {
       const pr = await withRateLimitHandling(() =>
         octokit.rest.pulls.create({
           owner: repoOwner,
           repo: repoName,
-          title: `Automated Update - ${new Date()}`,
+          title: `Update README.md [Automated] - ${new Date()}`,
           head: sourceBranch,
           base: baseBranch,
-          body: `This is an automated PR after a push event.\n\n### Modified Files:\n${modifiedFiles.join('\n')}\n\n### Commit Details:\n${commitInfo}`
+          body: `This is an automated PR to update the README.md after a push event.\n\n### Commit Details:\n${commitInfo}`
         })
       )
       console.log(`Pull request created successfully! PR #${pr.data.number}`)
