@@ -7,7 +7,8 @@ import got from 'got';
 
 import { runAnalyzer } from './server-test-runner.js'; 
 import  preprocess  from './src/processors/preprocess.js'; 
-import { getData, waitForAnalysis } from './app-apicall.js';
+import {  waitForAnalysis } from './app-apicall.js';
+import * as github from './src/utils/github.js'; 
 // Load environment variables from .env file
 dotenv.config();
 
@@ -57,7 +58,7 @@ async function withRateLimitHandling(apiCall, maxRetries = 3) {
 app.webhooks.on('push', async ({ octokit, payload }) => {
   console.log('Received push event');
 
-  const latestCommitSha = "f8582dc855f8a2353ec169a986345640a5953675"; // Get last commit SHA
+  const latestCommitSha = payload.after; // Get last commit SHA
   console.log(`Latest commit SHA: ${latestCommitSha}`);
 
   // Extract branch name
