@@ -1,53 +1,79 @@
 import dotenv from 'dotenv';
 import got from 'got';
 
-// Load environment variables from .env file
 dotenv.config();
 
-// Base URL for Cyclopt API
 const BASE_URL = process.env.DEV_SERVER_URL;  
-const apiToken = process.env.API_TOKEN;  
+const apiToken = process.env.API_TOKEN;
+const waitForAnalysis = async (commitHash, maxWaitTime = 200000, checkInterval = 10000) => {
+    console.log(`🔍 Waiting for analysis of commit: ${commitHash}...`);
+    
+    const startTime = Date.now();
 
-// Function to fetch analysis by commit hash
-const fetchAnalysisByCommitHash = async (commitHash) => {
+    while (Date.now() - startTime < maxWaitTime) {
+        try {
+            const res = await getData(commitHash);
+        
+
+            // ✅ Check if analysis exists and exit loop immediately
+            if (res && res.analyses && res.analyses.length > 0) {
+                console.log("✅ Analysis is ready! Exiting loop.");
+                return res; // 🛑 Exit function immediately
+            }
+
+            console.log("⏳ Analysis not ready, retrying...");
+        } catch (error) {
+            console.warn("⚠️ API request failed, retrying in 10s...", error.message);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, checkInterval)); // Wait before retrying
+    }
+
+    console.error("⏳ Timeout: Analysis did not complete in time.");
+    throw new Error("Analysis timeout reached");
+};
+
+
+
+
+
+
+const getData = async (commitHash) => {
     try {
-        // Ensure that the base URL ends with a slash and append the full endpoint
-        const apiUrl = `${BASE_URL}/analyses/commit/${commitHash}`;  // Add '/' between base URL and endpoint
+        // Using provided commit hash instead of hardcoded one
+        const apiUrl = `${BASE_URL}/cyclopt/openapi/analyses/commit/${commitHash}`;
+        console.log('API URL:', apiUrl);
 
-        // Log the API URL for debugging purposes
-        console.log(`API URL: ${apiUrl}`);
-
-        // Make the GET request to the Cyclopt API using 'got'
-        const response = await got(apiUrl, {
-            method: 'GET',
+        // Send API request
+        const res = await got.get(apiUrl, {
             headers: {
-                'x-access-cyclopt-token': apiToken,  // Authorization token
-                'Content-Type': 'application/json',  // Set the content type
+                'x-access-cyclopt-token': apiToken,
+                'Accept': 'application/json',
             },
-            responseType: 'json',  // Automatically parse the JSON response
+            responseType: 'json',
         });
 
-        // Return the parsed JSON data
-        return response.body;  // This will be the analysis data for the commit
-    } catch (error) {
-        // Enhanced error handling to log the status code and response
-        if (error.response) {
-            console.error('Error Response:', error.response.body);  // The body of the response
-            console.error('Status Code:', error.response.statusCode);  // The status code
+        // Log full response
+        console.log('Full Response:', JSON.stringify(res.body, null, 2));
+
+        // Check if 'analyses' exists and return it
+        if (res.body && res.body.analyses && res.body.analyses.length > 0) {
+            const analysis = res.body.analyses[0]; // Assuming the first analysis object is what you need
+
+            console.log('Characteristics:', JSON.stringify(analysis.characteristics, null, 2));
+            console.log('Violations:', JSON.stringify(analysis.violations, null, 2));
+            console.log('Metrics:', JSON.stringify(analysis.metrics, null, 2));
+
+            return res.body;  // Return the full response body
         } else {
-            console.error('Error:', error.message);  // General error message if no response is available
+            console.warn('No analysis found in response.');
+            return null; // If no analysis, return null
         }
-        throw new Error('Failed to retrieve analysis data');
+    } catch (err) {
+        console.error('Error:', err.response?.body || err.message);
+        return null; // Return null on error
     }
 };
 
-// Example Usage
-const commitHash = '52600fc3ceece6bcfcc090488feb6323de336a35'; // Replace with actual commit hash
 
-fetchAnalysisByCommitHash(commitHash)
-    .then((data) => {
-        console.log('Analysis Data:', data);  // Print the data when the analysis is fetched successfully
-    })
-    .catch((error) => {
-        console.error('Error:', error.message);  // Handle errors
-    });
+export { getData, waitForAnalysis };

@@ -3,9 +3,11 @@ import fs from 'fs';
 import { App } from 'octokit';
 import { createNodeMiddleware } from '@octokit/webhooks';
 import http from 'http';
+import got from 'got';
 
-import { runAnalyzer } from './server-test-runner.js'; // Import your analyzer function
-import  preprocess  from './src/processors/preprocess.js'; // Import your preprocessing function
+import { runAnalyzer } from './server-test-runner.js'; 
+import  preprocess  from './src/processors/preprocess.js'; 
+import { getData, waitForAnalysis } from './app-apicall.js';
 // Load environment variables from .env file
 dotenv.config();
 
@@ -19,6 +21,9 @@ const baseBranch = process.env.BASE_BRANCH;
 const sourceBranch = process.env.SOURCE_BRANCH;
 const port = process.env.PORT || 3000;
 const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
+
+const BASE_URL = process.env.DEV_SERVER_URL;  
+const apiToken = process.env.API_TOKEN;
 
 // Create the GitHub App instance
 const app = new App({
@@ -48,6 +53,7 @@ async function withRateLimitHandling(apiCall, maxRetries = 3) {
   throw new Error('Exceeded max retries due to rate limits');
 }
 
+
 app.webhooks.on('push', async ({ octokit, payload }) => {
   console.log('Received push event');
 
@@ -72,10 +78,13 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
   }
 
   console.log(`Modified files detected: ${modifiedFiles.join(', ')}`);
-
+ 
   try {
-    // Step 1: Run Preprocessing
+    await waitForAnalysis(latestCommitSha); // Wait for analysis to complete
+    console.log(`Analysis for commit ${latestCommitSha} is ready.`);
+    
     console.log("Running preprocessing...");
+
     await preprocess(latestCommitSha);
     console.log("Preprocessing complete.");
 
