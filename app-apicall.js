@@ -5,7 +5,7 @@ dotenv.config();
 
 const BASE_URL = process.env.DEV_SERVER_URL;  
 const apiToken = process.env.API_TOKEN;
-const waitForAnalysis = async (commitHash, maxWaitTime = 200000, checkInterval = 10000) => {
+const waitForAnalysis = async (commitHash, maxWaitTime = 200000, checkInterval = 20000) => {
     console.log(`🔍 Waiting for analysis of commit: ${commitHash}...`);
     
     const startTime = Date.now();
@@ -42,7 +42,7 @@ const getData = async (commitHash) => {
     try {
         // Using provided commit hash instead of hardcoded one
         const apiUrl = `${BASE_URL}/cyclopt/openapi/analyses/commit/${commitHash}`;
-        console.log('API URL:', apiUrl);
+        
 
         // Send API request
         const res = await got.get(apiUrl, {
