@@ -3,12 +3,12 @@ import fs from 'fs';
 import { App } from 'octokit';
 import { createNodeMiddleware } from '@octokit/webhooks';
 import http from 'http';
-import got from 'got';
+
 
 import { runAnalyzer } from './server-test-runner.js'; 
 import  preprocess  from './src/processors/preprocess.js'; 
 import {  waitForAnalysis } from './app-apicall.js';
-import * as github from './src/utils/github.js'; 
+
 // Load environment variables from .env file
 dotenv.config();
 
@@ -23,8 +23,6 @@ const sourceBranch = process.env.SOURCE_BRANCH;
 const port = process.env.PORT || 3000;
 const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
 
-const BASE_URL = process.env.DEV_SERVER_URL;  
-const apiToken = process.env.API_TOKEN;
 
 // Create the GitHub App instance
 const app = new App({
@@ -112,18 +110,6 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
       return;
     }
     console.log("Starting GitHub operations...");
-    const githubOptions = {
-      owner: repoOwner,
-      repo: repoName,
-      commitMsg: "Automated fixes applied",
-      prTitle: "Automated Fixes [Bot]",
-      prBody: "This PR contains automated fixes from the analysis.",
-      newBranch: `automated-fixes-${Date.now()}`, // Unique branch
-      productionBranch: baseBranch,
-      changedArray: ["*"], // Include all modified files
-    };
-
-    await afterProcess(githubOptions); 
 
   } catch (error) {
     console.error('Error handling push event:', error);
