@@ -66,8 +66,6 @@ const Github = (auth, authenticatedUrl, clonePath) => {
 	// const clonePath = 'your-clone-path'; // Replace with your actual clone path
 	
 	const afterProcess = async (githubOptions) => {
-		// const octokit = new Octokit({ auth: 'your-token' }); // Initialize Octokit with your token
-	
 		try {
 			const { 
 				owner,
@@ -96,7 +94,7 @@ const Github = (auth, authenticatedUrl, clonePath) => {
 				logger.info("========================");
 				return; // Exit the function early since there's nothing to do
 			}
-
+	
 			logger.info("========= Info =========");
 			logger.info("DONE");
 			logger.info("========================");
@@ -128,22 +126,35 @@ const Github = (auth, authenticatedUrl, clonePath) => {
 			logger.info(`Successfully pushed changes to branch "${newBranch}".`);
 			logger.info("===============================");
 	
-			// Create a Pull Request
-			logger.info("========= Pull Request Operations =========");
-			const response = await octokit.rest.pulls.create({
-				owner,
-				repo,
-				title: prTitle,
-				body: prBody,
-				head: newBranch,         // e.g. "violations-fixes"
-				base: productionBranch,  // e.g. "main"
-			});
+			// Create a Pull Request if the source branch is different from the base branch
+			if (newBranch !== productionBranch) {
+				logger.info("========= Pull Request Operations =========");
 	
-			logger.info(`Pull Request created successfully: ${response.data.html_url}`);
-			logger.info("===========================================");
+				// Format commit details
+				const commitInfo = `Commit Summary: ${commitResult.summary.message}`;
+	
+				// Format modified files for PR body
+				const modifiedFiles = filePatterns.join("\n");
+	
+				// Create the PR
+				const response = await octokit.rest.pulls.create({
+					owner,
+					repo,
+					title: prTitle || `Automated Update - ${new Date().toISOString()}`,
+					body: prBody || `This is an automated PR after a push event.\n\n### Modified Files:\n${modifiedFiles}\n\n### Commit Details:\n${commitInfo}`,
+					head: newBranch,         // e.g. "violations-fixes"
+					base: productionBranch,  // e.g. "main"
+				});
+	
+				logger.info(`Pull Request created successfully! PR #${response.data.number}`);
+				logger.info(`View PR: ${response.data.html_url}`);
+				logger.info("===========================================");
+				console.log('Github operations completed successfully!');
+			} else {
+				logger.info('Source and base branches are the same. Skipping PR creation.');
+			}
 	
 		} catch (error) {
-			console.log("HUGE ERROR",);
 			logger.error("========= Error Occurred =========");
 			logger.error(`Error during git operations: ${error.message}`);
 			logger.error(`Stack Trace: ${error.stack}`);
@@ -151,6 +162,7 @@ const Github = (auth, authenticatedUrl, clonePath) => {
 			throw error; // Re-throw the error after logging
 		}
 	};
+	
 	
 	const rest = async (route, params) => {
 		return octokit.request(route, params);
