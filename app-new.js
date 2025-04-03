@@ -123,7 +123,7 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
       changedArray: ["*"], // Include all modified files
     };
 
-    await github.afterProcess(githubOptions); 
+    await afterProcess(githubOptions); 
 
   } catch (error) {
     console.error('Error handling push event:', error);
