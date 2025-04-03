@@ -1,0 +1,1 @@
+export { default as processSastPerFile } from "./process-sast-per-file.js";
