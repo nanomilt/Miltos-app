@@ -1,6 +1,6 @@
 /* eslint-disable security/detect-non-literal-fs-filename */
 /* eslint-disable no-sync */
-import fs from "node:fs";
+ import fs from "node:fs";
 import path from "node:path";
 
 import { models } from "#dbs";
