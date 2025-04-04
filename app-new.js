@@ -53,7 +53,7 @@ async function withRateLimitHandling(apiCall, maxRetries = 3) {
 app.webhooks.on('push', async ({ octokit, payload }) => {
 	console.log('Received push event');
 
-	const latestCommitSha = payload.ref; // Get last commit SHA
+	const latestCommitSha ="4be4979d1823607768f41d216e1aafbd5e1ecab8" ; // Get last commit SHA
 	console.log(`Latest commit SHA: ${latestCommitSha}`);
 
 	// Extract branch name
