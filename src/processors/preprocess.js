@@ -11,7 +11,7 @@ const { Analysis, Commit } = models;
 
 const { GITHUB_TOKEN } = process.env;
 
-const subanalyzers = ["sast", "violations"];
+//const subanalyzers = ["sast", "violations"];
 
 const preprocess = async (sha) => {
 	try {

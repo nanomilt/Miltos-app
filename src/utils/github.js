@@ -127,7 +127,9 @@ const Github = (auth, authenticatedUrl, clonePath) => {
 			logger.info("===============================");
 	
 			// Create a Pull Request if the source branch is different from the base branch
-			if (newBranch !== productionBranch) {
+			if (newBranch === productionBranch) {
+				logger.info('Source and base branches are the same. Skipping PR creation.');
+			} else {
 				logger.info("========= Pull Request Operations =========");
 	
 				// Format commit details
@@ -150,8 +152,6 @@ const Github = (auth, authenticatedUrl, clonePath) => {
 				logger.info(`View PR: ${response.data.html_url}`);
 				logger.info("===========================================");
 				console.log('Github operations completed successfully!');
-			} else {
-				logger.info('Source and base branches are the same. Skipping PR creation.');
 			}
 	
 		} catch (error) {
@@ -162,7 +162,6 @@ const Github = (auth, authenticatedUrl, clonePath) => {
 			throw error; // Re-throw the error after logging
 		}
 	};
-	
 	
 	const rest = async (route, params) => {
 		return octokit.request(route, params);
