@@ -10,10 +10,10 @@ const { Commit, Analysis } = models;
 
 const router = express.Router({ mergeParams: true });
 
-const originalHash = "70a8d22b75e173df5f4ca1612bdcdaf692b7f125";
-const owner = "Papitoulini";
-const name = "juice-shop";
-const language = "TypeScript";
+const originalHash = "13202bfad27338b4b88f3b3db8075158d7576400";
+const owner = "nanomilt";
+const name = "Miltos-app";
+const language = "Javascript";
 const root = ".";
 
 const enhanceViolations = (violations = {}) => {
