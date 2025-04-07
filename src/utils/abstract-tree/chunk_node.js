@@ -45,7 +45,7 @@ function chunkNode(node, codeLines, maxLines = 100) {
 /**
  * Groups an array of AST nodes (assumed to be sorted by start location)
  * into as large as possible chunks that do not exceed maxLines.
- * Each chunk’s boundaries are derived from the first node’s start and the last node’s end.
+ * Each chunk's boundaries are derived from the first node's start and the last node's end.
  *
  * @param {object[]} nodes - Array of AST nodes.
  * @param {string[]} codeLines - The array of code lines.
