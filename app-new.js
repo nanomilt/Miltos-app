@@ -1,4 +1,4 @@
-import dotenv from 'dotenv';
+ import dotenv from 'dotenv';
 import fs from 'node:fs';
 import { App } from 'octokit';
 import { createNodeMiddleware } from '@octokit/webhooks';
@@ -20,6 +20,7 @@ const repoName = process.env.REPO_NAME;
 const baseBranch = process.env.BASE_BRANCH;
 const sourceBranch = process.env.SOURCE_BRANCH;
 const port = process.env.PORT || 3000;
+// eslint-disable-next-line security/detect-non-literal-fs-filename
 const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
 
 // Create the GitHub App instance

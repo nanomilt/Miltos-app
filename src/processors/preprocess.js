@@ -20,6 +20,7 @@ const preprocess = async (sha) => {
 		const {
 			_id: commitId,
 			// repositories: [{ owner, name, productionBranch, addedBy: { _id: userId, github: { token }, username } }],
+			// eslint-disable-next-line no-unused-vars
 			repositories: [{ owner, name, productionBranch, addedBy: { _id: userId, username }, language }],
 		} = await Commit.findOne({ hash: sha })
 			.populate({
