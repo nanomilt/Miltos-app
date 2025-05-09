@@ -3,7 +3,6 @@ import got from "got";
 
 const LLM = async () => {
 	const { PYTHON_API_URL, LLM_OAUTH } = process.env;
-	//let messages = [];
 	const pythonBackend = got.extend({
 		prefixUrl: PYTHON_API_URL,
 		headers: {
@@ -36,17 +35,10 @@ const LLM = async () => {
 
 	return {
 		sendMessage: async (question, isCore = false) => {
-			// messages.push({ role: "user", message: question, isCore });
 			const { body: unparsedResponse } = await pythonBackend.post( {
 				json: { message: question, model: MODEL },
 			});
 			const { response } = JSON.parse(unparsedResponse);
-			// if (isCore) {
-			// 	messages.push({ role: "assistant", message: response, isCore });
-			// } else {
-			// 	messages.length = 0;
-			// 	console.log("messages cleared", messages.length)
-			// }
 			return response;
 		},
 	};
