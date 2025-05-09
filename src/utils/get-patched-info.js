@@ -47,14 +47,11 @@ const findUniqueBestFuzzyMatchPairs = (fromArray, toArray, startingFromLine, sta
 const processFiles = (files, patches) => {
 	const patchRegex = /@@\s*-(\d+),\d*\s\+(\d+),?\d*\s@@(.*?)(?=(\r?\n@@\s*-\d+,\d+\s\+\d+,\d+\s@@|$))/gs;
 
-	// const allPatchSections = [];
-
 	for (const item of files) {
 		const fileName = `/${item.filename}`;
 		if (!patches[fileName]) patches[fileName] = [];
 
 		const patchSections = item.patch ? [...item.patch.matchAll(patchRegex)] : [];
-		// allPatchSections.push(patchSections);
 		for (const patch of patchSections) {
 			const [_, patchStartingFrom, patchStartingTo, content] = patch;
 			const lines = content.split(/\r?\n/);
@@ -124,8 +121,6 @@ const processFiles = (files, patches) => {
 			}
 		}
 	}
-
-	// fs.writeFileSync("allPatchSections.json", JSON.stringify(allPatchSections, null, 2));
 };
 
 const getPatchedInfo = async (owner, name, user, hash, type) => {
@@ -143,7 +138,6 @@ const getPatchedInfo = async (owner, name, user, hash, type) => {
 			for (const file of files.filter((f) => f.status === "renamed")) {
 				changedFileNameMapping[`/${file.previous_filename}`] = `/${file.filename}`;
 			}
-			// fs.writeFileSync("files.json", JSON.stringify(files, null, 2));
 
 			processFiles(files, patches);
 			return { patches, changedFileNameMapping };

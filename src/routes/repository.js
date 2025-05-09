@@ -84,7 +84,6 @@ router.get("/", async (req, res) => {
 
 		const {
 			_id: commitId,
-			// repositories: [{ owner, name, productionBranch, addedBy: { _id: userId, github: { token }, username } }],
 			repositories: [{ language }],
 		} = await Commit.findOne({ hash: originalHash })
 			.populate({
@@ -123,8 +122,10 @@ router.get("/", async (req, res) => {
 
 			for (const [ruleId, lines] of Object.entries(fileViolations || {})) {
 				const violation = violationsMap[ruleId] || null;
-				fileViolationsSummary[violation.severity] += lines.length;
-				fileViolationsSummary.Total += 1;
+				if (violation) {
+					fileViolationsSummary[violation.severity] += lines.length;
+					fileViolationsSummary.Total += lines.length;
+				}
 			}
 
 			return {
