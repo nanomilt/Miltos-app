@@ -124,7 +124,7 @@ router.get("/", async (req, res) => {
 			for (const [ruleId, lines] of Object.entries(fileViolations || {})) {
 				const violation = violationsMap[ruleId] || null;
 				fileViolationsSummary[violation.severity] += lines.length;
-				fileViolationsSummary.Total += 1;
+				fileViolationsSummary.Total += lines.length;
 			}
 
 			return {
