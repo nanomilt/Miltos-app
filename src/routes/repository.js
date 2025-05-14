@@ -84,7 +84,6 @@ router.get("/", async (req, res) => {
 
 		const {
 			_id: commitId,
-			// repositories: [{ owner, name, productionBranch, addedBy: { _id: userId, github: { token }, username } }],
 			repositories: [{ language }],
 		} = await Commit.findOne({ hash: originalHash })
 			.populate({
