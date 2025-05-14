@@ -5,7 +5,7 @@ const processVulnerabilities = async (vulnerabilities, repositoryBasePath) => {
 
 		const changedFiles = new Set();
 
-		console.log({ ok: true, process: "vulnerabilities"})
+		console.log({ ok: true, process: "vulnerabilities"});
 
 		return changedFiles;
 	} catch (error) {
