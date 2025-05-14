@@ -4,6 +4,10 @@ import { App } from 'octokit';
 import { createNodeMiddleware } from '@octokit/webhooks';
 import http from 'node:http';
 
+import { runAnalyzer } from './server-test-runner.js'; 
+import  preprocess  from './src/processors/preprocess.js'; 
+import {  waitForAnalysis } from './app-apicall.js';
+
 // Load environment variables from .env file
 dotenv.config();
 
@@ -16,6 +20,7 @@ const repoName = process.env.REPO_NAME;
 const baseBranch = process.env.BASE_BRANCH;
 const sourceBranch = process.env.SOURCE_BRANCH;
 const port = process.env.PORT || 3000;
+// eslint-disable-next-line security/detect-non-literal-fs-filename
 const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
 
 // Create the GitHub App instance
@@ -48,11 +53,9 @@ async function withRateLimitHandling(apiCall, maxRetries = 3) {
 
 app.webhooks.on('push', async ({ octokit, payload }) => {
 	console.log('Received push event');
-
-	const commitInfo = payload.commits.map(commit => {
-		console.log(`Processing commit: ${commit.id}`); // Log each commit's ID while processing
-		return `Commit: ${commit.id}\nMessage: ${commit.message}\nAuthor: ${commit.author.name}`;
-	}).join('\n\n');
+	
+	const latestCommitSha = payload.ref; // Get last commit SHA
+	console.log(`Latest commit SHA: ${latestCommitSha}`);
 
 	// Extract branch name
 	const branch = payload.ref.replace('refs/heads/', '');
@@ -72,7 +75,22 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
 	}
 
 	console.log(`Modified files detected: ${modifiedFiles.join(', ')}`);
+ 
+	try {
+		await waitForAnalysis(latestCommitSha); // Wait for analysis to complete
+		console.log(`Analysis for commit ${latestCommitSha} is ready.`);
+    
+		console.log("Running preprocessing...");
 
+		await preprocess(latestCommitSha);
+		console.log("Preprocessing complete.");
+
+		// Step 2: Run Analyzer
+		await runAnalyzer(latestCommitSha);
+    
+	} catch (error) {
+		console.error('Error handling push event:', error);
+	}
 	try {
 		// Check for existing PRs
 		const existingPRs = await withRateLimitHandling(() =>
@@ -89,23 +107,8 @@ app.webhooks.on('push', async ({ octokit, payload }) => {
 			console.log('A pull request already exists. Skipping PR creation.');
 			return;
 		}
+		console.log("Starting GitHub operations...");
 
-		// Create a pull request
-		if (sourceBranch === baseBranch) {
-			console.log('Source and base branches are the same. Skipping PR creation.');
-		} else {
-			const pr = await withRateLimitHandling(() =>
-				octokit.rest.pulls.create({
-					owner: repoOwner,
-					repo: repoName,
-					title: `Automated Update - ${new Date()}`,
-					head: sourceBranch,
-					base: baseBranch,
-					body: `This is an automated PR after a push event.\n\n### Modified Files:\n${modifiedFiles.join('\n')}\n\n### Commit Details:\n${commitInfo}`
-				})
-			);
-			console.log(`Pull request created successfully! PR #${pr.data.number}`);
-		}
 	} catch (error) {
 		console.error('Error handling push event:', error);
 	}
