@@ -1,17 +1,15 @@
-import { logger } from "#logger";
-
 const processDuplicates = async (duplicates, repositoryBasePath) => {
-	try {
+  try {
 
-		const changedFiles = new Set();
+    const changedFiles = new Set();
 
-		console.log({ ok: true, process: "duplicates"})
+    console.log({ ok: true, process: 'duplicates'});
 
-		return changedFiles;
-	} catch (error) {
-		logger.error(`Error during preprocess: ${error.message}`);
-		throw error;
-	}
+    return changedFiles;
+  } catch (error) {
+    console.log(`Error during preprocess: ${error.message}`);
+    throw error;
+  }
 };
 
 export default processDuplicates;
